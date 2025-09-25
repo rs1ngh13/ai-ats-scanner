@@ -1,0 +1,16 @@
+# Python caches
+__pycache__/
+*.pyc
+
+# Virtual envs & secrets
+.venv/
+.env
+*.env
+
+# OS cruft
+.DS_Store
+
+# Data & caches
+data/**/*.pdf
+data/**/*.docx
+.cache/
