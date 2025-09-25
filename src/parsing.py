@@ -1,21 +1,63 @@
 from dataclasses import dataclass
+from typing import Optional
+import pathlib
+
+import fitz  # PyMuPDF
+from docx import Document
 
 
 @dataclass
 class ParsedDoc:
-    # A structured representation of a parsed resume/JD
-    text: str  # the full cleaned text
-    sections: dict[str, str]  # named sections (skills/experience/education)
-    meta: dict | None = None  # optional metadata (e.g., source, filename)
+    text: str
+    sections: dict[str, str]
+    meta: Optional[dict] = None
+
+
+def _read_pdf(path: pathlib.Path) -> str:
+    text_parts = []
+    with fitz.open(path) as doc:
+        for page in doc:
+            text_parts.append(page.get_text("text"))
+    return "\n".join(text_parts)
+
+
+def _read_docx(path: pathlib.Path) -> str:
+    doc = Document(path)
+    return "\n".join(p.text for p in doc.paragraphs)
+
+
+def _normalize(s: str) -> str:
+    # simple normalization; we can expand later
+    lines = [ln.strip() for ln in s.splitlines()]
+    lines = [ln for ln in lines if ln]  # drop empties
+    return "\n".join(lines)
 
 
 def parse_resume(path_or_bytes) -> ParsedDoc:
-    """Phase 1 TODO: extract clean text + sections from PDF/DOCX."""
-    # For Phase 0, return an empty shell to prove shape; real logic comes in Phase 1
-    return ParsedDoc(text="", sections={}, meta={"source": "resume"})
+    """
+    Parse a resume from PDF/DOCX path.
+    For Phase 1 we return normalized full text and leave sections empty.
+    """
+    path = pathlib.Path(path_or_bytes)
+    if path.suffix.lower() == ".pdf":
+        raw = _read_pdf(path)
+    elif path.suffix.lower() == ".docx":
+        raw = _read_docx(path)
+    else:
+        raise ValueError(f"Unsupported resume format: {path.suffix}")
+
+    text = _normalize(raw)
+    return ParsedDoc(text=text, sections={}, meta={"source": "resume", "filename": path.name})
 
 
-def parse_job(text: str) -> ParsedDoc:
-    """Phase 1 TODO: normalize JD text, optionally detect title & skills."""
-    # For Phase 0, pass through whatever text we got with basic metadata
-    return ParsedDoc(text=text or "", sections={}, meta={"source": "job"})
+def parse_job(text_or_path: str) -> ParsedDoc:
+    """
+    Accept either pasted JD text or a path to a .txt file.
+    """
+    p = pathlib.Path(text_or_path)
+    if p.exists() and p.suffix.lower() == ".txt":
+        text = _normalize(p.read_text(encoding="utf-8", errors="ignore"))
+    else:
+        text = _normalize(text_or_path)
+
+    return ParsedDoc(text=text, sections={}, meta={"source": "job"})
