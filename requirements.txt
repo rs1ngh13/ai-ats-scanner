@@ -70,6 +70,7 @@ jupytext==1.16.6
 kiwisolver==1.4.8
 lazy_loader==0.4
 linecache2==1.0.0
+lxml==6.0.2
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 matplotlib==3.10.1
@@ -118,10 +119,12 @@ pydicom==3.0.1
 pyee==12.0.0
 pygame==2.6.1
 Pygments==2.19.1
+PyMuPDF==1.26.4
 pyparsing==3.2.3
 PySocks==1.7.1
 pytest==8.4.2
 python-dateutil==2.9.0.post0
+python-docx==1.2.0
 python-dotenv==1.1.1
 python-gdcm==3.0.24.1
 python-on-whales==0.75.1
