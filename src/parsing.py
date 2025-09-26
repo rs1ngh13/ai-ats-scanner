@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 import pathlib
 
-import fitz  # PyMuPDF
+import fitz 
 from docx import Document
 
 
@@ -14,11 +14,11 @@ class ParsedDoc:
 
 
 def _read_pdf(path: pathlib.Path) -> str:
-    text_parts = []
+    parts = []
     with fitz.open(path) as doc:
         for page in doc:
-            text_parts.append(page.get_text("text"))
-    return "\n".join(text_parts)
+            parts.append(page.get_text("text"))
+    return "\n".join(parts)
 
 
 def _read_docx(path: pathlib.Path) -> str:
@@ -27,37 +27,43 @@ def _read_docx(path: pathlib.Path) -> str:
 
 
 def _normalize(s: str) -> str:
-    # simple normalization; we can expand later
     lines = [ln.strip() for ln in s.splitlines()]
-    lines = [ln for ln in lines if ln]  # drop empties
+    lines = [ln for ln in lines if ln]
     return "\n".join(lines)
 
 
 def parse_resume(path_or_bytes) -> ParsedDoc:
-    """
-    Parse a resume from PDF/DOCX path.
-    For Phase 1 we return normalized full text and leave sections empty.
-    """
-    path = pathlib.Path(path_or_bytes)
-    if path.suffix.lower() == ".pdf":
-        raw = _read_pdf(path)
-    elif path.suffix.lower() == ".docx":
-        raw = _read_docx(path)
+    p = pathlib.Path(path_or_bytes)
+    if p.suffix.lower() == ".pdf":
+        raw = _read_pdf(p)
+    elif p.suffix.lower() == ".docx":
+        raw = _read_docx(p)
     else:
-        raise ValueError(f"Unsupported resume format: {path.suffix}")
-
+        raise ValueError(f"Unsupported resume format: {p.suffix}")
     text = _normalize(raw)
-    return ParsedDoc(text=text, sections={}, meta={"source": "resume", "filename": path.name})
+    return ParsedDoc(text=text, sections={}, meta={"source": "resume", "filename": p.name})
 
 
 def parse_job(text_or_path: str) -> ParsedDoc:
     """
-    Accept either pasted JD text or a path to a .txt file.
+    Accept either pasted JD text OR a path to a .txt file.
+    If the input has newlines or is long, treat it as text (not a path).
     """
-    p = pathlib.Path(text_or_path)
-    if p.exists() and p.suffix.lower() == ".txt":
-        text = _normalize(p.read_text(encoding="utf-8", errors="ignore"))
-    else:
-        text = _normalize(text_or_path)
+    s = text_or_path or ""
+    looks_like_path = (
+        "\n" not in s
+        and "\r" not in s
+        and len(s) < 260                    # avoid OS filename limits
+        and s.lower().endswith(".txt")
+    )
 
+    if looks_like_path:
+        p = pathlib.Path(s)
+        if p.exists() and p.is_file():
+            text = _normalize(p.read_text(encoding="utf-8", errors="ignore"))
+            return ParsedDoc(text=text, sections={}, meta={"source": "job", "filename": p.name})
+
+    # Fallback: treat as raw JD text
+    text = _normalize(s)
     return ParsedDoc(text=text, sections={}, meta={"source": "job"})
+
